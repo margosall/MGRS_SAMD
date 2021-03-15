@@ -13,7 +13,7 @@
 
 #define PI           3.14159265358979323e0    /* PI                        */
 #define MIN_LAT      ( (-80.5 * PI) / 180.0 ) /* -80.5 degrees in radians    */
-#define MAX_LAT      ( (84.5 * PI) / 180.0 )  /* 84.5 degrees in radians     */
+#define MAX_LAT_UTM      ( (84.5 * PI) / 180.0 )  /* 84.5 degrees in radians     */
 #define MIN_EASTING  100000
 #define MAX_EASTING  900000
 #define MIN_NORTHING 0
@@ -94,7 +94,7 @@ long Convert_Geodetic_To_UTM (double Latitude,
   double False_Northing = 0;
   double Scale = 0.9996;
 
-  if ((Latitude < MIN_LAT) || (Latitude > MAX_LAT))
+  if ((Latitude < MIN_LAT) || (Latitude > MAX_LAT_UTM))
   { /* Latitude out of range */
     Error_Code |= UTM_LAT_ERROR;
   }

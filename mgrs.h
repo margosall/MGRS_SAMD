@@ -1,5 +1,9 @@
-#include "ups.h"
 #include "utm.h"
+#include "pi.h"
+
+#include <stdio.h>
+#include <string.h>
+
 #define PI180 0.01745329251
 #define DEG_TO_RAD       0.017453292519943295 /* PI/180                      */
 #define RAD_TO_DEG       57.29577951308232087 /* 180/PI                      */
@@ -34,9 +38,6 @@
 #define TWOMIL        2000000.e0    /* TWO MILLION                           */
 #define TRUE                      1  /* CONSTANT VALUE FOR TRUE VALUE  */
 #define FALSE                     0  /* CONSTANT VALUE FOR FALSE VALUE */
-#define PI    3.14159265358979323e0  /* PI                             */
-#define PI_OVER_2  (PI / 2.0e0)
-
 
 #define MIN_EASTING  100000
 #define MAX_EASTING  900000
@@ -49,9 +50,9 @@
 #define MIN_EAST_NORTH 0
 #define MAX_EAST_NORTH 4000000
 /* Ellipsoid parameters, default to WGS 84 */
-double MGRS_a = 6378137.0;    /* Semi-major axis of ellipsoid in meters */
-double MGRS_f = 1 / 298.257223563; /* Flattening of ellipsoid           */
-char   MGRS_Ellipsoid_Code[3] = {'W','E',0};
+const double MGRS_a = 6378137.0;    /* Semi-major axis of ellipsoid in meters */
+const double MGRS_f = 1 / 298.257223563; /* Flattening of ellipsoid           */
+const char   MGRS_Ellipsoid_Code[3] = {'W','E',0};
 
 /*
  *    CLARKE_1866 : Ellipsoid code for CLARKE_1866
@@ -108,22 +109,7 @@ static const Latitude_Band Latitude_Band_Table[20] =
   {LETTER_W, 7000000.0, 72.0, 64.0, 6000000.0},
   {LETTER_X, 7900000.0, 84.5, 72.0, 6000000.0}};
   
-typedef struct UPS_Constant_Value
-{
-  long letter;            /* letter representing latitude band      */
-  long ltr2_low_value;    /* 2nd letter range - low number         */
-  long ltr2_high_value;   /* 2nd letter range - high number          */
-  long ltr3_high_value;   /* 3rd letter range - high number (UPS)   */
-  double false_easting;   /* False easting based on 2nd letter      */
-  double false_northing;  /* False northing based on 3rd letter     */
-} UPS_Constant;
 
-static const UPS_Constant UPS_Constant_Table[4] =
-  {{LETTER_A, LETTER_J, LETTER_Z, LETTER_Z, 800000.0, 800000.0},
-  {LETTER_B, LETTER_A, LETTER_R, LETTER_Z, 2000000.0, 800000.0},
-  {LETTER_Y, LETTER_J, LETTER_Z, LETTER_P, 800000.0, 1300000.0},
-  {LETTER_Z, LETTER_A, LETTER_J, LETTER_P, 2000000.0, 1300000.0}};
-  
 long Make_MGRS_String (char* MGRS,
                        long Zone,
                        int Letters[MGRS_LETTERS],
@@ -359,107 +345,6 @@ long UTM_To_MGRS (long Zone,
   return error_code;
 } /* END UTM_To_MGRS */
   
-long Convert_UPS_To_MGRS (char   Hemisphere,
-                          double Easting,
-                          double Northing,
-                          long   Precision,
-                          char*  MGRS)
-/*
- *  The function Convert_UPS_To_MGRS converts UPS (hemisphere, easting,
- *  and northing) coordinates to an MGRS coordinate string according to
- *  the current ellipsoid parameters.  If any errors occur, the error
- *  code(s) are returned by the function, otherwise UPS_NO_ERROR is
- *  returned.
- *
- *    Hemisphere    : Hemisphere either 'N' or 'S'     (input)
- *    Easting       : Easting/X in meters              (input)
- *    Northing      : Northing/Y in meters             (input)
- *    Precision     : Precision level of MGRS string   (input)
- *    MGRS          : MGRS coordinate string           (output)
- */
-{ /* Convert_UPS_To_MGRS */
-  double false_easting;       /* False easting for 2nd letter                 */
-  double false_northing;      /* False northing for 3rd letter                */
-  double grid_easting;        /* Easting used to derive 2nd letter of MGRS    */
-  double grid_northing;       /* Northing used to derive 3rd letter of MGRS   */
-  long ltr2_low_value;        /* 2nd letter range - low number                */
-  int letters[MGRS_LETTERS];  /* Number location of 3 letters in alphabet     */
-  int index = 0;
-  long error_code = MGRS_NO_ERROR;
-
-  if ((Hemisphere != 'N') && (Hemisphere != 'S'))
-    error_code |= MGRS_HEMISPHERE_ERROR;
-  if ((Easting < MIN_EAST_NORTH) || (Easting > MAX_EAST_NORTH))
-    error_code |= MGRS_EASTING_ERROR;
-  if ((Northing < MIN_EAST_NORTH) || (Northing > MAX_EAST_NORTH))
-    error_code |= MGRS_NORTHING_ERROR;
-  if ((Precision < 0) || (Precision > MAX_PRECISION))
-    error_code |= MGRS_PRECISION_ERROR;
-  if (!error_code)
-  {
-
-    if (Hemisphere == 'N')
-    {
-      if (Easting >= TWOMIL)
-        letters[0] = LETTER_Z;
-      else
-        letters[0] = LETTER_Y;
-
-      index = letters[0] - 22;
-      ltr2_low_value = UPS_Constant_Table[index].ltr2_low_value;
-      false_easting = UPS_Constant_Table[index].false_easting;
-      false_northing = UPS_Constant_Table[index].false_northing;
-    }
-    else
-    {
-      if (Easting >= TWOMIL)
-        letters[0] = LETTER_B;
-      else
-        letters[0] = LETTER_A;
-
-      ltr2_low_value = UPS_Constant_Table[letters[0]].ltr2_low_value;
-      false_easting = UPS_Constant_Table[letters[0]].false_easting;
-      false_northing = UPS_Constant_Table[letters[0]].false_northing;
-    }
-
-    grid_northing = Northing;
-    grid_northing = grid_northing - false_northing;
-    letters[2] = (long)(grid_northing / ONEHT);
-
-    if (letters[2] > LETTER_H)
-      letters[2] = letters[2] + 1;
-
-    if (letters[2] > LETTER_N)
-      letters[2] = letters[2] + 1;
-
-    grid_easting = Easting;
-    grid_easting = grid_easting - false_easting;
-    letters[1] = ltr2_low_value + ((long)(grid_easting / ONEHT));
-
-    if (Easting < TWOMIL)
-    {
-      if (letters[1] > LETTER_L)
-        letters[1] = letters[1] + 3;
-
-      if (letters[1] > LETTER_U)
-        letters[1] = letters[1] + 2;
-    }
-    else
-    {
-      if (letters[1] > LETTER_C)
-        letters[1] = letters[1] + 2;
-
-      if (letters[1] > LETTER_H)
-        letters[1] = letters[1] + 1;
-
-      if (letters[1] > LETTER_L)
-        letters[1] = letters[1] + 3;
-    }
-
-    Make_MGRS_String (MGRS, 0, letters, Easting, Northing, Precision);
-  }
-  return (error_code);
-} /* Convert_UPS_To_MGRS */
 
 long Convert_Geodetic_To_MGRS (double Latitude,
                                double Longitude,
@@ -497,34 +382,7 @@ long Convert_Geodetic_To_MGRS (double Latitude,
     error_code |= MGRS_PRECISION_ERROR;
   if (!error_code)
   {
-    if ((Latitude < MIN_UTM_LAT) || (Latitude > MAX_UTM_LAT))
-    {
-      temp_error_code = Set_UPS_Parameters (MGRS_a, MGRS_f);
-      if(!temp_error_code)
-      {
-        temp_error_code = Convert_Geodetic_To_UPS (Latitude, Longitude, &hemisphere, &easting, &northing);
-        if(!temp_error_code)
-        {
-          error_code |= Convert_UPS_To_MGRS (hemisphere, easting, northing, Precision, MGRS);
-        }
-        else
-        {
-          if(temp_error_code & UPS_LAT_ERROR)
-            error_code |= MGRS_LAT_ERROR;
-          if(temp_error_code & UPS_LON_ERROR)
-            error_code |= MGRS_LON_ERROR;
-        }
-      }
-      else
-      {
-        if(temp_error_code & UPS_A_ERROR)
-          error_code |= MGRS_A_ERROR;
-        if(temp_error_code & UPS_INV_F_ERROR)
-          error_code |= MGRS_INV_F_ERROR;
-      }
-    }
-    else
-    {
+
       temp_error_code = Set_UTM_Parameters (MGRS_a, MGRS_f, 0);
       if(!temp_error_code)
       {
@@ -554,7 +412,6 @@ long Convert_Geodetic_To_MGRS (double Latitude,
         if(temp_error_code & UTM_ZONE_OVERRIDE_ERROR)
           error_code |= MGRS_ZONE_ERROR;
       }
-    }
   }
   return (error_code);
 } /* Convert_Geodetic_To_MGRS */

@@ -1,3 +1,6 @@
+#include <math.h>
+#include "pi.h"
+
 #define TRANMERC_NO_ERROR           0x0000
 #define TRANMERC_LAT_ERROR          0x0001
 #define TRANMERC_LON_ERROR          0x0002
@@ -10,9 +13,6 @@
 #define TRANMERC_SCALE_FACTOR_ERROR 0x0100
 #define TRANMERC_LON_WARNING        0x0200
 
-#define PI              3.14159265358979323e0   /* PI     */
-#define PI_OVER_2         (PI/2.0e0)            /* PI over 2 */
-#define MAX_LAT         ((PI * 89.99)/180.0)    /* 89.99 degrees in radians */
 #define MAX_DELTA_LONG  ((PI * 90)/180.0)       /* 90 degrees in radians */
 #define MIN_SCALE_FACTOR  0.3
 #define MAX_SCALE_FACTOR  3.0

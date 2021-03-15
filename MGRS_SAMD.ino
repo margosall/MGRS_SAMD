@@ -31,9 +31,9 @@ void setup()
   display.setTextColor(WHITE);
   display.setCursor(0,0);
   display.println("Loading.");
-  SerialUSB.println(string);
+  //Serial.println(string);
   display.display();
-  Serial1.begin(9600);
+  Serial1begin(9600);
   //SerialUSB.begin(9600);
 }
 
